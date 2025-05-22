@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Voting</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0f4f8;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 400px;
+      margin: 40px auto;
+      padding: 20px;
+      background-color: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .ld-btn {
+      background-color: #3b82f6;
+      color: white;
+      font-weight: bold;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    h3 {
+      margin: 10px 0;
+    }
+
+    label, input {
+      width: 100%;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    input[type="text"] {
+      padding: 10px;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    .btn-container {
+      display: flex;
+      justify-content: space-between;
+      margin: 20px 0;
+    }
+
+    button.vote-btn {
+      flex: 1;
+      margin: 0 5px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 2px solid #ccc;
+      font-weight: bold;
+      cursor: pointer;
+      background-color: white;
+      transition: 0.2s;
+    }
+
+    button.vote-btn.active {
+      background-color: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+
+    button#confirmBtn {
+      background-color: #10b981;
+      color: white;
+      border: none;
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .nama-list button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin: 5px 0;
+      text-align: left;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background-color: white;
+      cursor: pointer;
+    }
+
+    canvas {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container" id="votePage">
+  <div class="header">
+    <h3>Voting</h3>
+    <button class="ld-btn" id="ldShortcut">LD</button>
+  </div>
+
+  <label for="namaInput">Nama:</label>
+  <input type="text" id="namaInput" placeholder="Masukkan nama kamu...">
+
+  <div class="btn-container">
+    <button class="vote-btn" id="btn1">Cantik</button>
+    <button class="vote-btn" id="btn2">Besar</button>
+    <button class="vote-btn" id="btn3">Tinggi</button>
+  </div>
+
+  <button id="confirmBtn">Confirm</button>
+</div>
+
+<div class="container hidden" id="thankYouPage">
+  <h3>Makasih sudah nge-vote!</h3>
+  <button class="ld-btn" id="showLeaderboardBtn">Lihat Leaderboard</button>
+</div>
+
+<div class="container hidden" id="leaderboardPage">
+  <h3>Leaderboard</h3>
+  <button class="ld-btn" onclick="resetLeaderboard()">Reset Data</button>
+  <div class="nama-list" id="namaList"></div>
+  <canvas id="pieChart"></canvas>
+</div>
+
+<script>
+  const voteButtons = [document.getElementById("btn1"), document.getElementById("btn2"), document.getElementById("btn3")];
+  const confirmBtn = document.getElementById("confirmBtn");
+  const namaInput = document.getElementById("namaInput");
+
+  const votePage = document.getElementById("votePage");
+  const thankYouPage = document.getElementById("thankYouPage");
+  const leaderboardPage = document.getElementById("leaderboardPage");
+
+  const namaList = document.getElementById("namaList");
+  const ctx = document.getElementById('pieChart').getContext('2d');
+  let pieChart;
+
+  // Ambil data dari localStorage saat awal
+  let leaderboardData = JSON.parse(localStorage.getItem("leaderboard")) || [];
+
+  voteButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      btn.classList.toggle("active");
+      const aktif = voteButtons.filter(b => b.classList.contains("active"));
+      if (aktif.length > 2) {
+        aktif[0].classList.remove("active");
+      }
+    });
+  });
+
+  confirmBtn.addEventListener("click", () => {
+    const nama = namaInput.value.trim();
+    if (nama === "") {
+      alert("Nama tidak boleh kosong.");
+      return;
+    }
+
+    const selected = voteButtons.filter(b => b.classList.contains("active"));
+    if (selected.length === 0) {
+      alert("Pilih minimal satu.");
+      return;
+    }
+
+    const record = {
+      nama: nama,
+      Cantik: voteButtons[0].classList.contains("active") ? 1 : 0,
+      Besar: voteButtons[1].classList.contains("active") ? 1 : 0,
+      Tinggi: voteButtons[2].classList.contains("active") ? 1 : 0
+    };
+
+    leaderboardData.push(record);
+    localStorage.setItem("leaderboard", JSON.stringify(leaderboardData)); // Simpan data ke localStorage
+
+    votePage.classList.add("hidden");
+    thankYouPage.classList.remove("hidden");
+  });
+
+  document.getElementById("showLeaderboardBtn").addEventListener("click", tampilkanLeaderboard);
+  document.getElementById("ldShortcut").addEventListener("click", tampilkanLeaderboard);
+
+  function tampilkanLeaderboard() {
+    thankYouPage.classList.add("hidden");
+    votePage.classList.add("hidden");
+    leaderboardPage.classList.remove("hidden");
+
+    namaList.innerHTML = "";
+    const uniqueNames = [...new Set(leaderboardData.map(d => d.nama))];
+
+    uniqueNames.forEach(nama => {
+      const btn = document.createElement("button");
+      btn.textContent = nama;
+      btn.addEventListener("click", () => showPieChart(nama));
+      namaList.appendChild(btn);
+    });
+  }
+
+  function showPieChart(nama) {
+    const votes = leaderboardData.filter(d => d.nama === nama);
+    const sum = { Cantik: 0, Besar: 0, Tinggi: 0 };
+    votes.forEach(v => {
+      sum.Cantik += v.Cantik;
+      sum.Besar += v.Besar;
+      sum.Tinggi += v.Tinggi;
+    });
+
+    const data = [sum.Cantik, sum.Besar, sum.Tinggi];
+    const labels = ["Cantik", "Besar", "Tinggi"];
+    const total = data.reduce((a, b) => a + b, 0);
+
+    if (pieChart) pieChart.destroy();
+
+    pieChart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: ['#f43f5e', '#f59e0b', '#10b981']
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom' },
+          datalabels: {
+            color: '#fff',
+            font: {
+              weight: 'bold',
+              size: 16
+            },
+            formatter: (value) => {
+              if (total === 0) return "0%";
+              return `${Math.round((value / total) * 100)}%`;
+            }
+          }
+        }
+      },
+      plugins: [ChartDataLabels]
+    });
+  }
+
+  function resetLeaderboard() {
+    if (confirm("Yakin ingin menghapus semua data voting?")) {
+      localStorage.removeItem("leaderboard");
+      leaderboardData = [];
+      location.reload();
+    }
+  }
+</script>
+
+</body>
+</html>
